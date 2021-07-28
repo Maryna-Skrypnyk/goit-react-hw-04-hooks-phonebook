@@ -1,5 +1,6 @@
-import React, { Component } from 'react';
+import React, { useState } from 'react';
 
+import useLocalStorage from '../hooks/useLocalStorage';
 import Layout from '../components/Layout';
 import ContactForm from '../components/ContactForm';
 import Filter from '../components/Filter';
@@ -9,27 +10,16 @@ import shortid from 'shortid';
 
 import './App.module.scss';
 
-class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+export default function App() {
+  // const [contacts, setContacts] = useState(() => JSON.parse(window.localStorage.getItem('contacts')) ?? []);
+  const [contacts, setContacts] = useLocalStorage('contacts', []);
+  const [filter, setFilter] = useState('');
 
-  componentDidMount() {
-    const parsedContacts = JSON.parse(localStorage.getItem('contacts'));
+  // useEffect(() => {
+  //   window.localStorage.setItem('contacts', JSON.stringify(contacts));
+  // }, [contacts])
 
-    parsedContacts && this.setState({ contacts: parsedContacts });
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.contacts !== prevState.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
-    }
-  }
-
-  addContact = ({ name, number }) => {
-    const { contacts } = this.state;
-
+  const addContact = (name, number) => {
     const contact = {
       id: shortid.generate(),
       name,
@@ -60,27 +50,22 @@ class App extends Component {
       alert('Field "Number" is empty');
       return;
     }
-
-    this.setState(({ contacts }) => ({
-      contacts: [contact, ...contacts],
-    }));
+    setContacts(prevContacts => [contact, ...prevContacts]);
   };
 
-  changeFilter = e => {
-    this.setState({ filter: e.target.value });
+  const changeFilter = e => {
+    setFilter(e.target.value);
   };
 
-  getVisibleContacts = () => {
-    const { contacts, filter } = this.state;
-
+  const getVisibleContacts = () => {
     const normalizedFilter = filter.toLowerCase();
     return contacts.filter(contact =>
       contact.name.toLowerCase().includes(normalizedFilter),
     );
   };
 
-  getVisibleContactsSortByName = () => {
-    const visibleContacts = this.getVisibleContacts();
+  const getVisibleContactsSortByName = () => {
+    const visibleContacts = getVisibleContacts();
 
     const visibleContactsSortByName = visibleContacts.sort((a, b) => {
       const nameA = a.name.toUpperCase();
@@ -98,35 +83,25 @@ class App extends Component {
     return visibleContactsSortByName;
   };
 
-  deleteContact = contactId => {
-    this.setState(({ contacts }) => ({
-      contacts: contacts.filter(contact => contact.id !== contactId),
-    }));
+  const deleteContact = contactId => {
+    setContacts(contacts.filter(contact => contact.id !== contactId));
   };
 
-  render() {
-    const { contacts, filter } = this.state;
+  return (
+    <Layout>
+      <h1>Phonebook</h1>
+      <ContactForm onSubmit={addContact} />
 
-    const filteredContacts = this.getVisibleContactsSortByName();
-
-    return (
-      <Layout>
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.addContact} />
-
-        <h2>Contacts</h2>
-        <Filter value={filter} onChange={this.changeFilter} />
-        {contacts.length === 0 ? (
-          <p>There are no contacts in the list</p>
-        ) : (
-          <ContactList
-            contacts={filteredContacts}
-            onDeleteContact={this.deleteContact}
-          />
-        )}
-      </Layout>
-    );
-  }
+      <h2>Contacts</h2>
+      <Filter value={filter} onChange={changeFilter} />
+      {contacts.length === 0 ? (
+        <p>There are no contacts in the list</p>
+      ) : (
+        <ContactList
+          contacts={getVisibleContactsSortByName()}
+          onDeleteContact={deleteContact}
+        />
+      )}
+    </Layout>
+  );
 }
-
-export default App;
